@@ -1,8 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 
 export async function generateGherkin(userStory) {
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+  const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
   });
   const prompt = `
   
@@ -163,10 +163,16 @@ Caso Categoría Enunciados Casos de prueba Resultado (Cumple/No cumple)
 ${userStory} 
 
 `;
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: prompt,
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.3,
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
   });
 
-  return response.text;
+  return completion.choices[0].message.content;
 }

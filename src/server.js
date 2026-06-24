@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
-
-const result = dotenv.config();
+dotenv.config();
 
 import app from "./app.js";
 

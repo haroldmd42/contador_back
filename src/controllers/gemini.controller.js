@@ -1,4 +1,4 @@
-import { generateGherkin } from "../services/gemini.service.js";
+import { generateGherkin } from "../services/groq.service.js";
 
 export async function askGemini(req, res) {
   try {
@@ -18,7 +18,7 @@ export async function askGemini(req, res) {
       data: result,
     });
   } catch (error) {
-    console.error("🔥 ERROR GEMINI COMPLETO:");
+    console.error("🔥 ERROR IA:");
     console.error(error);
 
     return res.status(500).json({
