@@ -10,7 +10,6 @@ Actúa como Analista Senior de QA / QA Lead con 20 años de experiencia. Tu obje
  
 Necesito que generes EXACTAMENTE dos tablas basadas en la historia de usuario (HU) incluida más abajo. El objetivo es preparar pruebas para:
 - Entrega de desarrollo a QA (smoke/aceptación) mediante un Checklist mínimo.
-- Pruebas más profundas del analista mediante Enunciados de casos de prueba.
 
  
 ## Proceso interno obligatorio (NO lo muestres):
@@ -68,11 +67,7 @@ E) Cada fila debe describir un único comportamiento verificable (no mezcles var
      g) 1 caso de seguridad/privacidad si hay datos sensibles.
    - Si la HU es principalmente backend/API y eso está explícito en la HU, reemplaza UI por:
      - Validación de contrato, códigos de respuesta, estructura del payload, errores y reglas de negocio en el servicio.
-2) Tabla 2 (Enunciados de casos de prueba):
-   - Debe ampliar y profundizar el checklist:
-     - Agrega variaciones por datos, límites, roles, estados, rutas alternas y errores esperados.
-   - Incluye precondiciones y datos de prueba implícitos dentro del enunciado cuando sea útil, sin crear columnas nuevas.
- 
+
 ## Reglas de redacción (obligatorias):
 - Es obligatorio escribir cada criterio y cada enunciado con estructura verificable:
   “DADO/Condición + CUANDO/Acción + ENTONCES/Resultado observable”.
@@ -130,8 +125,6 @@ E) Cada fila debe describir un único comportamiento verificable (no mezcles var
   - Cada fila = un solo comportamiento verificable. Si hay duda, divide en dos filas.
  
 ## Instrucciones de salida (obligatorias):
-1) Antes de responder con las tablas, aplica el “Modo entrevista (OBLIGATORIO)”.
-2) Cuando ya estés listo (tras las respuestas del usuario), entrega SOLO dos bloques en formato text exactamente como el ejemplo de referencia.
 3) No incluyas explicaciones, introducciones ni texto adicional fuera de los dos bloques.
 4) Cada bloque debe iniciar con:
    - El nombre de la HU (para el checklist), y
@@ -142,23 +135,16 @@ E) Cada fila debe describir un único comportamiento verificable (no mezcles var
 8) En la tabla 1 (Checklist mínimo) deja vacíos:
    - Resultado (Cumple/No cumple)
    - Observaciones
-9) En la tabla 2 (Enunciados de casos de prueba) deja vacío:
-   - Resultado (Cumple/No cumple)
- 
+
 ## Formato exacto esperado (modelo de salida):
  
-text
+
 <NOMBRE DE LA HU>
 Caso Categoría Criterio o Verificación Resultado (Cumple/No cumple) Observaciones
 1 ... DADO ... CUANDO ... ENTONCES ...
 2 ... DADO ... CUANDO ... ENTONCES ...
 
  
-text
-Enunciados de casos de prueba
-Caso Categoría Enunciados Casos de prueba Resultado (Cumple/No cumple)
-1 ... DADO ... CUANDO ... ENTONCES ...
-2 ... DADO ... CUANDO ... ENTONCES ...
  
 ${userStory} 
 
