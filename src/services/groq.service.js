@@ -246,6 +246,10 @@ Genera únicamente los escenarios Gherkin Smoke Test necesarios para cubrir comp
 
 ${userStory} 
 
+DATOS ADICIONALES
+
+${additionalData}
+
 `;
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
