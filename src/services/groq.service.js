@@ -1,6 +1,6 @@
 import Groq from "groq-sdk";
 
-export async function generateGherkin(userStory) {
+export async function generateGherkin(userStory, additionalData) {
   const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
   });
