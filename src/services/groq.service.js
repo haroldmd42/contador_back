@@ -4,11 +4,7 @@ export async function generateGherkin(userStory, additionalData) {
   const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
   });
-console.log("========== USER STORY ==========");
-console.log(userStory);
 
-console.log("========== ADDITIONAL DATA ==========");
-console.log(additionalData);
   const prompt = `
 Actúa como Analista Senior QA / QA Lead con más de 20 años de experiencia en análisis funcional, diseño de pruebas, automatización y aseguramiento de calidad.
 
@@ -256,8 +252,7 @@ DATOS ADICIONALES
 ${additionalData}
 
 `;
-console.log("========== PROMPT ==========");
-console.log(prompt);
+
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     temperature: 0.3,
