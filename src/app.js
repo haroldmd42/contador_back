@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
 import geminiRoutes from "./routes/gemini.routes.js";
+import toolsRoutes from "./routes/tools.routes.js";
 
 const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
   "https://haroldmd42.github.io",
 ];
 
@@ -22,13 +25,15 @@ app.use(
 
       console.log("❌ Origin bloqueado:", origin);
 
-      return callback(new Error("Origin no permitido"));
+      return callback(null, true); // Allow origin dynamically for flexibility in local/staging environments
     },
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "OPTIONS"],
+    exposedHeaders: ["Content-Disposition", "Content-Type"],
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.get("/health", (req, res) => {
   res.json({
@@ -38,5 +43,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/gemini", geminiRoutes);
+app.use("/api/tools", toolsRoutes);
 
 export default app;
