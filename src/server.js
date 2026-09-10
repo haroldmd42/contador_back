@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`
-🚀 Servidor iniciado
-🌎 Puerto: ${PORT}
+Servidor iniciado
+Puerto: ${PORT}
 `);
 });
