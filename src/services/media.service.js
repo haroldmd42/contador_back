@@ -23,6 +23,23 @@ const MIME_TYPES = {
   flac: 'audio/flac',
 };
 
+function getAudioAtempoFilters(speed) {
+  let remaining = speed;
+  const filters = [];
+  while (remaining > 2.0) {
+    filters.push('atempo=2.0');
+    remaining /= 2.0;
+  }
+  while (remaining < 0.5) {
+    filters.push('atempo=0.5');
+    remaining /= 0.5;
+  }
+  if (Math.abs(remaining - 1.0) > 0.01) {
+    filters.push(`atempo=${remaining.toFixed(4)}`);
+  }
+  return filters.join(',');
+}
+
 export async function convertMediaBuffer(inputBuffer, originalExt, targetFormat, options = {}) {
   const normTarget = targetFormat.toLowerCase();
   const tempDir = os.tmpdir();
@@ -34,11 +51,37 @@ export async function convertMediaBuffer(inputBuffer, originalExt, targetFormat,
   return new Promise((resolve, reject) => {
     let command = ffmpeg(inputPath);
 
-    // Apply format-specific options
+    // Apply format-specific fast options
     if (normTarget === 'mp4') {
-      command = command.format('mp4').videoCodec('libx264').audioCodec('aac');
+      command = command
+        .format('mp4')
+        .videoCodec('libx264')
+        .audioCodec('aac')
+        .outputOptions(['-preset ultrafast', '-tune zerolatency']);
     } else if (normTarget === 'webm') {
-      command = command.format('webm').videoCodec('libvpx-vp9').audioCodec('libopus');
+      command = command
+        .format('webm')
+        .videoCodec('libvpx-vp9')
+        .audioCodec('libopus')
+        .outputOptions(['-deadline realtime', '-cpu-used 8', '-b:v 2M']);
+    } else if (normTarget === 'avi') {
+      command = command
+        .format('avi')
+        .videoCodec('libx264')
+        .audioCodec('libmp3lame')
+        .outputOptions(['-preset ultrafast']);
+    } else if (normTarget === 'mov') {
+      command = command
+        .format('mov')
+        .videoCodec('libx264')
+        .audioCodec('aac')
+        .outputOptions(['-preset ultrafast']);
+    } else if (normTarget === 'mkv') {
+      command = command
+        .format('matroska')
+        .videoCodec('libx264')
+        .audioCodec('aac')
+        .outputOptions(['-preset ultrafast']);
     } else if (normTarget === 'mp3') {
       command = command.format('mp3').audioCodec('libmp3lame');
     } else if (normTarget === 'wav') {
@@ -51,9 +94,12 @@ export async function convertMediaBuffer(inputBuffer, originalExt, targetFormat,
 
     if (options.speed && parseFloat(options.speed) !== 1.0) {
       const speed = parseFloat(options.speed);
-      // setpts filter for video speed
-      const setpts = (1 / speed).toFixed(2);
+      const setpts = (1 / speed).toFixed(4);
       command = command.videoFilters(`setpts=${setpts}*PTS`);
+      const atempo = getAudioAtempoFilters(speed);
+      if (atempo) {
+        command = command.audioFilters(atempo);
+      }
     }
 
     command
