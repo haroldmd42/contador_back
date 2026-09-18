@@ -8,6 +8,7 @@ import {
   handleImageConvert,
   handleVideoConvert,
   handleAudioConvert,
+  handleProxyFrame,
 } from '../controllers/tools.controller.js';
 
 const router = express.Router();
@@ -25,5 +26,6 @@ router.post('/file-convert', upload.single('file'), handleFileConvert);
 router.post('/image-convert', upload.single('file'), handleImageConvert);
 router.post('/video-convert', upload.single('file'), handleVideoConvert);
 router.post('/audio-convert', upload.single('file'), handleAudioConvert);
+router.get('/proxy-frame', handleProxyFrame);
 
 export default router;
