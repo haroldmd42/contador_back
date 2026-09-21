@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import geminiRoutes from "./routes/gemini.routes.js";
 import toolsRoutes from "./routes/tools.routes.js";
+import { processProxiedHtml } from "./controllers/tools.controller.js";
 
 const app = express();
 
@@ -76,19 +77,38 @@ app.use(async (req, res, next) => {
       const targetResourceUrl = `${targetOrigin}${req.originalUrl}`;
       const proxyRes = await fetch(targetResourceUrl, {
         headers: {
-          'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1 Chrome/124.0.0.0',
           'Accept': req.headers['accept'] || '*/*',
           'Accept-Language': req.headers['accept-language'] || 'es-ES,es;q=0.9,en;q=0.8',
         },
       });
 
-      const contentType = proxyRes.headers.get('content-type');
+      const contentType = proxyRes.headers.get('content-type') || '';
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.removeHeader('X-Frame-Options');
+      res.removeHeader('x-frame-options');
+      res.removeHeader('Content-Security-Policy');
+      res.removeHeader('content-security-policy');
+      res.setHeader('X-Frame-Options', 'ALLOWALL');
+      res.setHeader('Content-Security-Policy', "frame-ancestors *");
+
+      if (contentType.includes('text/html')) {
+        const rawHtml = await proxyRes.text();
+        const settings = global.__lastProxiedSettings || {};
+        const processedHtml = processProxiedHtml({
+          html: rawHtml,
+          cleanUrl: targetResourceUrl,
+          effectiveOrigin: targetOrigin,
+          colorScheme: settings.colorScheme || 'light',
+          scrollbar: settings.scrollbar || 'hidden',
+        });
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.status(proxyRes.status).send(processedHtml);
+      }
+
       if (contentType) {
         res.setHeader('Content-Type', contentType);
       }
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.removeHeader('X-Frame-Options');
-      res.removeHeader('Content-Security-Policy');
 
       const arrayBuffer = await proxyRes.arrayBuffer();
       return res.status(proxyRes.status).send(Buffer.from(arrayBuffer));
