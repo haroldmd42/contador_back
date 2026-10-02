@@ -36,220 +36,98 @@ async function callGroqWithFallback(prompt, temperature = 0.3) {
 
 export async function generateGherkin(userStory, additionalData) {
   const prompt = `
-Actúa como Analista Senior QA / QA Lead con más de 20 años de experiencia en análisis funcional, diseño de pruebas, automatización y aseguramiento de calidad.
+Actúa como un Lead QA Engineer Senior con más de 20 años de experiencia en análisis funcional, diseño de pruebas, automatización y aseguramiento de calidad de software.
+Tu objetivo es generar la checklist de verificación y los casos de prueba para la Historia de Usuario (HU) y datos proporcionados, siguiendo con exactitud el estándar técnico utilizado en el proyecto.
 
-Tu objetivo es generar ÚNICAMENTE escenarios Gherkin orientados a Smoke Testing para validar una entrega de desarrollo antes de ser liberada al equipo QA.
+---
 
-## Objetivo
+### PROCESO DE ANÁLISIS INTERNO (NO mostrar en la respuesta final)
+1. Analiza la Historia de Usuario y los Datos Adicionales (diccionarios de datos, especificaciones de campos, mockups, reglas de negocio y criterios de aceptación).
+2. Identifica:
+   * Roles involucrados y permisos.
+   * Criterios de aceptación explícitos e implícitos (cada criterio de aceptación debe estar cubierto).
+   * Reglas de negocio críticas y condiciones lógicas.
+   * Atributos y campos: obligatoriedad, tipo de dato, longitudes mínimas/máximas, formatos y dependencias.
+   * Flujos principales (Happy Path), flujos de error críticos, flujos negativos y validaciones bloqueantes.
+   * Manejo de UI, estados de botones, modales, confirmaciones, cancelaciones y navegación.
+   * Seguridad, privacidad de datos y consistencia/integridad relacional.
+   * Corner cases relevantes.
+3. Reglas de calidad:
+   * No inventar funcionalidades ni reglas fuera del contexto de la HU y sus datos adicionales.
+   * Los resultados deben ser observables y los escenarios ejecutables.
+   * No generar escenarios redundantes o duplicados.
+   * Mantener trazabilidad directa con los criterios de aceptación.
 
-Generar escenarios Gherkin que permitan verificar rápidamente que la funcionalidad principal de la Historia de Usuario funciona correctamente, cumple los criterios de aceptación y respeta las reglas de negocio y validaciones críticas definidas.
+---
 
-## Proceso interno obligatorio (NO mostrar)
+### REGLAS DE ESTRUCTURA Y FORMATO
 
-1. Analiza la Historia de Usuario e identifica:
-   * Roles involucrados.
-   * Criterios de aceptación.
-   * Reglas de negocio.
-   * Restricciones funcionales.
-   * Campos y atributos.
-   * Validaciones.
-   * Flujos principales.
-   * Flujos de error críticos.
-   * Corner Cases relevantes.
-   * Componentes afectados (UI, API, datos).
+Debes entregar ÚNICAMENTE el resultado en formato Markdown claro, estructurado con el encabezado y las dos tablas descritas a continuación, listas para ser copiadas y pegadas directamente en una hoja de cálculo de Excel:
 
-2. Identifica todos los campos descritos en la HU y sus características:
-   * Obligatorio o no obligatorio.
-   * Longitud máxima.
-   * Longitud mínima.
-   * Tipo de dato.
-   * Restricciones especiales.
-   * Dependencias con otros campos.
+---
 
-3. Determina cuáles validaciones son críticas para Smoke Testing.
+#### 1. ENCABEZADO DE LA HISTORIA
+- **Título:** \`[ID_HU] - [Título descriptivo de la HU]\`
+(Si la historia no incluye un ID explícito, infiere uno apropiado como HU-01 o US-01).
 
-4. Genera únicamente escenarios necesarios para validar:
-   * Flujo principal.
-   * Reglas de negocio críticas.
-   * Restricciones funcionales.
-   * Validaciones bloqueantes.
-   * Accesos y permisos.
-   * Persistencia de información.
-   * Confirmaciones obligatorias.
-   * Mensajes críticos de error o éxito.
+---
 
-5. No generes escenarios redundantes.
+#### 2. TABLA 1: CHECKLIST DE CRITERIOS O VERIFICACIÓN
+Estructura de columnas:
+| Caso | Categoría | Criterio o Verificación | Resultado (Cumple/No cumple) | Observaciones |
+| :---: | :--- | :--- | :---: | :--- |
 
-## Alcance
+Reglas para la Tabla 1:
+1. **Caso:** Numeración incremental (1, 2, 3...).
+2. **Categoría:** Clasifica cada verificación estrictamente en una de las siguientes taxonomías:
+   - \`Acceso / Permisos\` (acceso permitido según rol, bloqueo de acceso y denegación por URL directa).
+   - \`UI / Formularios\` (campos requeridos marcados, botones deshabilitados mientras falten datos obligatorios, selectores, tooltips).
+   - \`UI / Listado\` (columnas exactas, estado vacío cuando no hay registros, paginación o scroll).
+   - \`UI / Detalle\` (modo solo lectura, carga de datos consistentes, modales).
+   - \`Reglas de negocio\` (lógica de negocio específica, condiciones condicionales, límites).
+   - \`Datos / Campos\` (campos obligatorios vs opcionales, valores precargados).
+   - \`Formato / Longitud\` (longitud mínima/máxima de caracteres, sin espacios al inicio/final, validaciones de formato email, teléfono, archivos, etc.).
+   - \`Mensajes / Errores\` (textos exactos de error, advertencias modales y mensajes de éxito entre comillas).
+   - \`Navegación\` (redirecciones tras guardar, flujo de "Cancelar" con confirmación y opciones "Cancelar" / "Salir sin guardar").
+   - \`Estados / Trazabilidad\` (cambios de estado de registros, auditoría de fecha y usuario que realiza la acción).
+   - \`Seguridad / Privacidad\` (enmascaramiento de datos sensibles como contraseñas, no exposición de IDs críticos).
+   - \`Integridad / Relación\` (consistencia entre entidades relacionadas, descarte de cambios si se cancela la edición).
+3. **Criterio o Verificación:** Redactar en formato Gherkin estándar: \`DADO [contexto/rol], CUANDO [acción/evento], ENTONCES [resultado esperado/validación].\`
+4. **Resultado (Cumple/No cumple):** Dejar vacío o con un guion \`-\`.
+5. **Observaciones:** Dejar vacío.
 
-Genera escenarios únicamente para:
-* Happy Path.
-* Reglas de negocio críticas.
-* Validaciones críticas.
-* Restricciones funcionales.
-* Accesos y permisos.
-* Confirmaciones requeridas.
-* Persistencia de datos.
-* Casos negativos que impidan completar el flujo.
+---
 
-No generes:
-* Pruebas exploratorias.
-* Casos duplicados.
-* Combinaciones exhaustivas.
-* Casos de regresión.
-* Casos técnicos internos.
-* Pruebas de rendimiento.
-* Pruebas de carga.
-* Pruebas de seguridad técnica.
-* Casos de borde irrelevantes para Smoke.
+#### 3. TABLA 2: ENUNCIADOS DE CASOS DE PRUEBA (TEST CASES)
+Separada por un título: \`### Enunciados de casos de prueba\`
+Estructura de columnas:
+| Caso | Categoría | Enunciados Casos de prueba | Resultado (Cumple/No cumple) |
+| :---: | :--- | :--- | :---: |
 
-## Cobertura mínima obligatoria
+Reglas para la Tabla 2:
+1. **Caso:** Numeración incremental (1, 2, 3... o 1.1, 1.2...).
+2. **Categoría:** Categoría evaluada coincidente con la taxonomía de la checklist.
+3. **Enunciados Casos de prueba:** Detallar escenarios específicos de prueba en formato Gherkin exacto (DADO, CUANDO, ENTONCES):
+   - Flujo feliz (creación/edición/visualización exitosa con datos válidos).
+   - Flujos negativos (omisión de campos obligatorios, formatos incorrectos, desbordamiento de caracteres, duplicidad de datos únicos).
+   - Seguridad y permisos (intento de acceso con rol no autorizado y por URL directa).
+   - Manejo de UI y cancelación (cancelar acción, persistencia o descarte temporal de datos).
+   - Casos de borde / Corner cases (datos con espacios en extremos, caracteres especiales, listas vacías).
+4. **Resultado (Cumple/No cumple):** Dejar vacío o con un guion \`-\`.
 
-Cada criterio de aceptación debe estar cubierto por al menos un escenario.
+---
 
-Además, deben generarse escenarios para:
+### INSTRUCCIONES DE SALIDA:
+- NO incluyas introducciones, ni saludos, ni explicaciones previas.
+- NO incluyas resúmenes, conclusiones o texto posterior fuera de las tablas.
+- Comienza directamente con el encabezado de la historia, seguido inmediatamente por la Tabla 1 y luego el título y la Tabla 2.
 
-### Acceso y permisos
-Si existen roles:
-* Al menos un escenario de acceso permitido.
-* Al menos un escenario de acceso denegado cuando aplique.
+---
 
-### Reglas de negocio
-Generar al menos un escenario por cada regla de negocio crítica explícita.
+### HISTORIA DE USUARIO A PROCESAR:
+${userStory}
 
-### Validaciones críticas de campos
-Analizar las reglas de validación y generar escenarios cuando la validación pueda impedir el funcionamiento correcto de la funcionalidad.
-
-Considerar especialmente:
-* Campos obligatorios.
-* Campos opcionales cuyo comportamiento sea relevante.
-* Longitudes máximas.
-* Longitudes mínimas.
-* Valores vacíos.
-* Valores compuestos únicamente por espacios.
-* Restricciones de edición.
-* Restricciones de eliminación.
-* Restricciones de tipo.
-* Restricciones de asociación.
-* Restricciones de navegación.
-
-### Criterios para generar escenarios de validación
-Generar escenarios cuando la validación:
-1. Impida guardar información.
-2. Impida completar el flujo principal.
-3. Corresponda a una regla de negocio explícita.
-4. Pueda generar inconsistencias de datos.
-5. Esté definida en las reglas de validación.
-6. Esté definida mediante obligatoriedad, longitud o formato.
-
-Ejemplos:
-* Campo obligatorio → escenario válido e inválido.
-* Campo con longitud máxima → escenario que valide el límite.
-* Restricción de tipo → escenario que valide que no se permita operar sobre tipos no soportados.
-* Acción con confirmación → escenario de confirmación y cancelación.
-
-## Tratamiento de campos
-Si la HU incluye una tabla de atributos o especificaciones de campos:
-Analizar automáticamente:
-* Nombre del campo.
-* Tipo.
-* Tamaño.
-* Obligatoriedad.
-* Restricciones.
-
-Y generar escenarios Smoke para validar:
-* Campos obligatorios críticos.
-* Límites máximos relevantes.
-* Restricciones funcionales relevantes.
-
-No generar escenarios para todos los campos indiscriminadamente.
-Priorizar únicamente aquellos cuya invalidación afecte directamente el flujo principal.
-
-## Corner Cases
-Analizar la sección de Corner Cases.
-Generar escenarios únicamente para aquellos Corner Cases que:
-* Puedan bloquear el flujo.
-* Puedan generar inconsistencias.
-* Estén relacionados con reglas de negocio críticas.
-* Estén directamente dentro del alcance de la HU.
-
-Ignorar Corner Cases secundarios o de bajo impacto para Smoke Testing.
-
-## Priorización
-Priorizar los escenarios en este orden:
-1. Acceso a la funcionalidad.
-2. Visualización inicial o carga de datos.
-3. Flujo principal exitoso.
-4. Persistencia de cambios.
-5. Reglas de negocio críticas.
-6. Validaciones obligatorias.
-7. Restricciones funcionales.
-8. Confirmaciones obligatorias.
-9. Casos negativos bloqueantes.
-
-## Reglas de calidad
-* No inventar funcionalidades.
-* No inventar reglas de negocio.
-* No inventar restricciones.
-* No asumir comportamientos no descritos.
-* Utilizar únicamente información presente en la HU.
-* Cada escenario debe validar un único comportamiento.
-* Los resultados deben ser observables.
-* Los escenarios deben ser ejecutables.
-* Mantener trazabilidad con los criterios de aceptación.
-
-## Reglas Gherkin
-Utilizar exclusivamente:
-* Feature
-* Scenario
-* Given
-* When
-* Then
-* And
-
-No utilizar:
-* Scenario Outline
-* Examples
-* Background
-
-Cada escenario debe:
-* Tener un nombre descriptivo.
-* Validar un único comportamiento.
-* Ser entendible por negocio y QA.
-* Mantener formato Gherkin estándar.
-
-## Instrucciones de salida
-No incluir:
-* Explicaciones.
-* Introducciones.
-* Resúmenes.
-* Justificaciones.
-* Tablas.
-* Casos de prueba.
-* Listas numeradas.
-* Texto fuera de Gherkin.
-
-La salida debe contener únicamente:
-
-Feature: <Nombre de la Historia de Usuario>
-
-Scenario: <Nombre del escenario>
-Given ...
-When ...
-Then ...
-
-Scenario: <Nombre del escenario>
-Given ...
-When ...
-Then ...
-
-Genera únicamente los escenarios Gherkin Smoke Test necesarios para cubrir completamente los criterios de aceptación, reglas de negocio y validaciones críticas de la Historia de Usuario.
-
-${userStory} 
-
-DATOS ADICIONALES
-
-${additionalData}
+${additionalData ? `### DATOS ADICIONALES / DICCIONARIO / ESPECIFICACIONES:\n${additionalData}` : ""}
 `;
 
   return await callGroqWithFallback(prompt);
