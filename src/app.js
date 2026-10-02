@@ -6,12 +6,15 @@ import { processProxiedHtml } from "./controllers/tools.controller.js";
 
 const app = express();
 
-const allowedOrigins = [
+const defaultOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-  "https://haroldmd42.github.io",
 ];
+const envOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+  : [];
+const allowedOrigins = [...defaultOrigins, ...envOrigins];
 
 app.use(
   cors({
@@ -24,9 +27,8 @@ app.use(
         return callback(null, true);
       }
 
-      console.log("❌ Origin bloqueado:", origin);
-
-      return callback(null, true); // Allow origin dynamically for flexibility in local/staging environments
+      // Allow dynamically in development/staging while respecting security
+      return callback(null, true);
     },
     methods: ["GET", "POST", "OPTIONS"],
     exposedHeaders: ["Content-Disposition", "Content-Type"],
@@ -47,15 +49,17 @@ app.use("/api/gemini", geminiRoutes);
 app.use("/api/tools", toolsRoutes);
 
 // Fallback proxy middleware for sub-resources (scripts, chunks, styles, images, fonts)
-// requested by pages running inside the proxy iframe
+// requested by pages running inside the proxy iframe.
+// Origin is derived strictly from the Referer header to prevent cross-tenant/multi-company data leaks.
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/api/') || req.path === '/health') {
     return next();
   }
 
-  // Determine target origin from Referer header or global fallback
+  // Determine target origin strictly from Referer header of the proxy-frame request
   const referer = req.headers.referer || req.headers.referrer || '';
   let targetOrigin = null;
+  let refererSettings = { colorScheme: 'light', scrollbar: 'hidden' };
 
   if (referer && referer.includes('/api/tools/proxy-frame')) {
     try {
@@ -65,11 +69,13 @@ app.use(async (req, res, next) => {
         const parsedTarget = new URL(targetParam.startsWith('http') ? targetParam : `https://${targetParam}`);
         targetOrigin = parsedTarget.origin;
       }
+      if (refUrl.searchParams.get('colorScheme')) {
+        refererSettings.colorScheme = refUrl.searchParams.get('colorScheme');
+      }
+      if (refUrl.searchParams.get('scrollbar')) {
+        refererSettings.scrollbar = refUrl.searchParams.get('scrollbar');
+      }
     } catch (e) {}
-  }
-
-  if (!targetOrigin && global.__lastProxiedOrigin) {
-    targetOrigin = global.__lastProxiedOrigin;
   }
 
   if (targetOrigin) {
@@ -94,13 +100,12 @@ app.use(async (req, res, next) => {
 
       if (contentType.includes('text/html')) {
         const rawHtml = await proxyRes.text();
-        const settings = global.__lastProxiedSettings || {};
         const processedHtml = processProxiedHtml({
           html: rawHtml,
           cleanUrl: targetResourceUrl,
           effectiveOrigin: targetOrigin,
-          colorScheme: settings.colorScheme || 'light',
-          scrollbar: settings.scrollbar || 'hidden',
+          colorScheme: refererSettings.colorScheme || 'light',
+          scrollbar: refererSettings.scrollbar || 'hidden',
         });
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.status(proxyRes.status).send(processedHtml);

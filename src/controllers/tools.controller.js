@@ -178,6 +178,16 @@ export function processProxiedHtml({ html, cleanUrl, effectiveOrigin, colorSchem
   let processed = html.replace(/<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
   processed = processed.replace(/<meta[^>]*http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
 
+  // 1b. Inject <base href="..."> to safely resolve relative subresources without shared server state
+  if (effectiveOrigin && !/<base\s+[^>]*href=/i.test(processed)) {
+    const baseTag = `<base href="${effectiveOrigin}/">`;
+    if (/<head[^>]*>/i.test(processed)) {
+      processed = processed.replace(/<head[^>]*>/i, `$&\\n  ${baseTag}`);
+    } else {
+      processed = `${baseTag}\\n${processed}`;
+    }
+  }
+
   // 2. Generate theme CSS
   const themeCss = colorScheme === 'dark'
     ? ':root, html { color-scheme: dark !important; }'
@@ -678,6 +688,24 @@ export function processProxiedHtml({ html, cleanUrl, effectiveOrigin, colorSchem
   return processed;
 }
 
+const BLOCKED_HOSTNAMES = [
+  '169.254.169.254',          // AWS/GCP/Azure link-local cloud metadata
+  'metadata.google.internal',
+  '100.100.100.200',          // Alibaba cloud metadata
+];
+
+function isSafeUrl(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (BLOCKED_HOSTNAMES.includes(hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Controller to proxy web pages inside an iframe, bypassing X-Frame-Options/CSP
  * and proxying sub-resources.
@@ -692,6 +720,10 @@ export async function handleProxyFrame(req, res) {
     const cleanUrl = url.startsWith('http://') || url.startsWith('https://')
       ? url
       : `https://${url}`;
+
+    if (!isSafeUrl(cleanUrl)) {
+      return res.status(403).send('Acceso a URL restringido por políticas de seguridad.');
+    }
 
     const response = await fetch(cleanUrl, {
       headers: {
@@ -716,13 +748,6 @@ export async function handleProxyFrame(req, res) {
     // Target origin for sub-resources fallback proxy
     const effectiveUrl = new URL(response.url || cleanUrl);
     const effectiveOrigin = effectiveUrl.origin;
-    global.__lastProxiedOrigin = effectiveOrigin;
-    global.__lastProxiedSettings = {
-      origin: effectiveOrigin,
-      colorScheme,
-      scrollbar,
-      url: cleanUrl,
-    };
 
     if (contentType.includes('text/html')) {
       const html = await response.text();
