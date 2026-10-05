@@ -2,11 +2,11 @@ import Groq from "groq-sdk";
 
 const FALLBACK_MODELS = [
   "openai/gpt-oss-120b",
-  "groq/compound",
-  "qwen/qwen3.6-27b"
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b"
 ];
 
-async function callGroqWithFallback(prompt, temperature = 0.3) {
+async function callGroqWithFallback(prompt, temperature = 0.2) {
   const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
   });
@@ -18,6 +18,7 @@ async function callGroqWithFallback(prompt, temperature = 0.3) {
       const completion = await groq.chat.completions.create({
         model,
         temperature,
+        max_tokens: 8192,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -36,91 +37,84 @@ async function callGroqWithFallback(prompt, temperature = 0.3) {
 
 export async function generateGherkin(userStory, additionalData) {
   const prompt = `
-Actúa como un Lead QA Engineer Senior con más de 20 años de experiencia en análisis funcional, diseño de pruebas, automatización y aseguramiento de calidad de software.
-Tu objetivo es generar la checklist de verificación y los casos de prueba para la Historia de Usuario (HU) y datos proporcionados, siguiendo con exactitud el estándar técnico utilizado en el proyecto.
+Actúa como un Lead QA Engineer Senior experto en pruebas funcionales y aseguramiento de calidad de software.
+Tu objetivo es generar OBLIGATORIAMENTE DOS TABLAS Markdown completas para la Historia de Usuario (HU) y datos proporcionados:
+1. Tabla 1: Checklist de Verificación (Criterios y Reglas principales)
+2. Tabla 2: Enunciados de Casos de Prueba (Test Cases detallados con numeración decimal 1.1, 1.2, 2.1... vinculados a cada fuente)
 
 ---
 
 ### PROCESO DE ANÁLISIS INTERNO (NO mostrar en la respuesta final)
-1. Analiza la Historia de Usuario y los Datos Adicionales (diccionarios de datos, especificaciones de campos, mockups, reglas de negocio y criterios de aceptación).
+1. Analiza exhaustivamente la Historia de Usuario y los Datos Adicionales (criterios de aceptación AC, reglas de negocio REG, diccionarios de datos y corner cases).
 2. Identifica:
-   * Roles involucrados y permisos.
-   * Criterios de aceptación explícitos e implícitos (cada criterio de aceptación debe estar cubierto).
-   * Reglas de negocio críticas y condiciones lógicas.
-   * Atributos y campos: obligatoriedad, tipo de dato, longitudes mínimas/máximas, formatos y dependencias.
-   * Flujos principales (Happy Path), flujos de error críticos, flujos negativos y validaciones bloqueantes.
-   * Manejo de UI, estados de botones, modales, confirmaciones, cancelaciones y navegación.
-   * Seguridad, privacidad de datos y consistencia/integridad relacional.
-   * Corner cases relevantes.
-3. Reglas de calidad:
-   * No inventar funcionalidades ni reglas fuera del contexto de la HU y sus datos adicionales.
-   * Los resultados deben ser observables y los escenarios ejecutables.
-   * No generar escenarios redundantes o duplicados.
-   * Mantener trazabilidad directa con los criterios de aceptación.
+   * Cada Criterio de Aceptación (etiquétalos como AC1, AC2, AC3...).
+   * Cada Regla de Negocio explícita (etiquétalas como REG1, REG2...).
+   * Flujos felices, flujos de error, validaciones de campos obligatorios/formatos y corner cases (CORNER1, CORNER2...).
+3. Rigor QA:
+   * Es mandatorio generar la Tabla 1 (Checklist) Y la Tabla 2 (Casos de prueba).
+   * La Tabla 2 debe desglosar los escenarios de prueba detallados (Happy path, negativos, límites, corner cases) vinculados por numeración decimal a cada caso de la Tabla 1.
 
 ---
 
-### REGLAS DE ESTRUCTURA Y FORMATO
+### FORMATO DE SALIDA OBLIGATORIO
 
-Debes entregar ÚNICAMENTE el resultado en formato Markdown claro, estructurado con el encabezado y las dos tablas descritas a continuación, listas para ser copiadas y pegadas directamente en una hoja de cálculo de Excel:
-
----
+Debes entregar el resultado en dos tablas Markdown claras y listas para ser copiadas o exportadas a Excel:
 
 #### 1. ENCABEZADO DE LA HISTORIA
-- **Título:** \`[ID_HU] - [Título descriptivo de la HU]\`
+- **Título:** \`[ID_HU] — [Título descriptivo de la HU]\`
 (Si la historia no incluye un ID explícito, infiere uno apropiado como HU-01 o US-01).
 
 ---
 
 #### 2. TABLA 1: CHECKLIST DE CRITERIOS O VERIFICACIÓN
-Estructura de columnas:
-| Caso | Categoría | Criterio o Verificación | Resultado (Cumple/No cumple) | Observaciones |
-| :---: | :--- | :--- | :---: | :--- |
+Estructura de columnas exacta:
+| Caso | Fuente | Criterio o Verificación | Resultado (Cumple/No cumple) | Observaciones |
+| :---: | :---: | :--- | :---: | :--- |
 
 Reglas para la Tabla 1:
-1. **Caso:** Numeración incremental (1, 2, 3...).
-2. **Categoría:** Clasifica cada verificación estrictamente en una de las siguientes taxonomías:
-   - \`Acceso / Permisos\` (acceso permitido según rol, bloqueo de acceso y denegación por URL directa).
-   - \`UI / Formularios\` (campos requeridos marcados, botones deshabilitados mientras falten datos obligatorios, selectores, tooltips).
-   - \`UI / Listado\` (columnas exactas, estado vacío cuando no hay registros, paginación o scroll).
-   - \`UI / Detalle\` (modo solo lectura, carga de datos consistentes, modales).
-   - \`Reglas de negocio\` (lógica de negocio específica, condiciones condicionales, límites).
-   - \`Datos / Campos\` (campos obligatorios vs opcionales, valores precargados).
-   - \`Formato / Longitud\` (longitud mínima/máxima de caracteres, sin espacios al inicio/final, validaciones de formato email, teléfono, archivos, etc.).
-   - \`Mensajes / Errores\` (textos exactos de error, advertencias modales y mensajes de éxito entre comillas).
-   - \`Navegación\` (redirecciones tras guardar, flujo de "Cancelar" con confirmación y opciones "Cancelar" / "Salir sin guardar").
-   - \`Estados / Trazabilidad\` (cambios de estado de registros, auditoría de fecha y usuario que realiza la acción).
-   - \`Seguridad / Privacidad\` (enmascaramiento de datos sensibles como contraseñas, no exposición de IDs críticos).
-   - \`Integridad / Relación\` (consistencia entre entidades relacionadas, descarte de cambios si se cancela la edición).
-3. **Criterio o Verificación:** Redactar en formato Gherkin estándar: \`DADO [contexto/rol], CUANDO [acción/evento], ENTONCES [resultado esperado/validación].\`
-4. **Resultado (Cumple/No cumple):** Dejar vacío o con un guion \`-\`.
-5. **Observaciones:** Dejar vacío.
+1. **Caso:** Numeración incremental (1, 2, 3, 4...).
+2. **Fuente:** Código de la fuente evaluada: \`AC1\`, \`AC2\`, \`AC3\`... (Criterios de Aceptación), \`REG1\`, \`REG2\`... (Reglas de Negocio) o categoría si no hay código.
+3. **Criterio o Verificación:** Redactar en formato Gherkin estándar usando \`<br>\` para separar las cláusulas:
+   \`DADO [contexto/rol]<br>CUANDO [acción/evento]<br>ENTONCES [resultado esperado/validación]\`
+4. **Resultado (Cumple/No cumple):** Dejar un guion \`-\` o vacío.
+5. **Observaciones:** Dejar vacío o con un guion \`-\`.
 
 ---
 
 #### 3. TABLA 2: ENUNCIADOS DE CASOS DE PRUEBA (TEST CASES)
-Separada por un título: \`### Enunciados de casos de prueba\`
-Estructura de columnas:
-| Caso | Categoría | Enunciados Casos de prueba | Resultado (Cumple/No cumple) |
-| :---: | :--- | :--- | :---: |
+Separada OBLIGATORIAMENTE por este título exacto:
+### Enunciados de casos de prueba
+
+Estructura de columnas exacta:
+| Caso | Fuente | Enunciados Casos de prueba | Resultado (Cumple/No cumple) |
+| :---: | :---: | :--- | :---: |
 
 Reglas para la Tabla 2:
-1. **Caso:** Numeración incremental (1, 2, 3... o 1.1, 1.2...).
-2. **Categoría:** Categoría evaluada coincidente con la taxonomía de la checklist.
-3. **Enunciados Casos de prueba:** Detallar escenarios específicos de prueba en formato Gherkin exacto (DADO, CUANDO, ENTONCES):
-   - Flujo feliz (creación/edición/visualización exitosa con datos válidos).
-   - Flujos negativos (omisión de campos obligatorios, formatos incorrectos, desbordamiento de caracteres, duplicidad de datos únicos).
-   - Seguridad y permisos (intento de acceso con rol no autorizado y por URL directa).
-   - Manejo de UI y cancelación (cancelar acción, persistencia o descarte temporal de datos).
-   - Casos de borde / Corner cases (datos con espacios en extremos, caracteres especiales, listas vacías).
-4. **Resultado (Cumple/No cumple):** Dejar vacío o con un guion \`-\`.
+1. **Caso:** Numeración decimal vinculada al número de Caso de la Tabla 1:
+   - Para Caso 1 (\`AC1\`): Casos \`1.1\`, \`1.2\`...
+   - Para Caso 2 (\`AC2\`): Casos \`2.1\`, \`2.2\`...
+   - Para Caso 3 (\`AC3\`): Casos \`3.1\`, \`3.2\`...
+   - Para Caso 4 (\`AC4\`): Casos \`4.1\`, \`4.2\`, \`4.3\`...
+   - Casos para Reglas de Negocio: ej. \`5.1\`, \`5.2\` (\`REG3\`), \`5.3\` (\`REG5\`), \`6.1\` (\`REG6\`)...
+   - Casos para Corner Cases: ej. \`9.1\` (\`CORNER1\`), \`10.1\` (\`CORNER2\`)...
+2. **Fuente:** Coincidente con la fuente evaluada (\`AC1\`, \`AC2\`, \`REG1\`, \`CORNER1\`, etc.).
+3. **Enunciados Casos de prueba:** Escenarios específicos de prueba en formato Gherkin exacto usando \`<br>\`:
+   \`DADO [precondición/estado/rol]<br>CUANDO [acción específica con datos concretos]<br>ENTONCES [resultado esperado observable]\`
+   Cubrir:
+   - Flujo feliz (creación/edición exitosa con datos válidos).
+   - Flujos negativos (omisión de campos obligatorios, formatos inválidos, límites de peso/longitud, duplicidad).
+   - Seguridad y permisos (acceso sin rol autorizado).
+   - Manejo de UI y cancelación (cancelación con confirmación, descarte de cambios).
+   - Casos de borde / Corner cases (caracteres especiales, archivos sin texto, timeouts).
+4. **Resultado (Cumple/No cumple):** Dejar un guion \`-\` o vacío.
 
 ---
 
-### INSTRUCCIONES DE SALIDA:
-- NO incluyas introducciones, ni saludos, ni explicaciones previas.
-- NO incluyas resúmenes, conclusiones o texto posterior fuera de las tablas.
-- Comienza directamente con el encabezado de la historia, seguido inmediatamente por la Tabla 1 y luego el título y la Tabla 2.
+### INSTRUCCIONES ESTRICTAS DE SALIDA:
+- ES OBLIGATORIO GENERAR AMBAS TABLAS COMPLETAS (Tabla 1 Y Tabla 2). NUNCA omitas la Tabla 2.
+- NO incluyas introducciones, ni textos de cortesía ("Aquí tienes...", etc.).
+- NO incluyas conclusiones o explicaciones al final.
+- Comienza directamente con el encabezado de la historia, seguido de la Tabla 1, el título \`### Enunciados de casos de prueba\` y la Tabla 2.
 
 ---
 
