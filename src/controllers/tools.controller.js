@@ -270,6 +270,89 @@ export function processProxiedHtml({ html, cleanUrl, effectiveOrigin, colorSchem
     <style id="qa-proxy-theme">
       ${themeCss}
       ${scrollbarCss}
+      /* QA Simulator Contained Fullscreen (keeps video/players within simulated device screen) */
+      html.qa-device-fullscreen-active,
+      html.qa-device-fullscreen-active body {
+        overflow: hidden !important;
+      }
+      .qa-device-fullscreen-target {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        min-width: 100vw !important;
+        min-height: 100vh !important;
+        z-index: 2147483647 !important;
+        background-color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        transform: none !important;
+      }
+      video.qa-device-fullscreen-target {
+        object-fit: contain !important;
+      }
+      .qa-device-fullscreen-target video {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: contain !important;
+      }
+      .qa-device-fullscreen-target.plyr,
+      .qa-device-fullscreen-target.video-js,
+      .qa-device-fullscreen-target .plyr__video-wrapper {
+        height: 100% !important;
+        max-height: 100vh !important;
+      }
+      .qa-device-fullscreen-target [class*="controls"],
+      .qa-device-fullscreen-target [class*="control"],
+      .qa-device-fullscreen-target .plyr__controls,
+      .qa-device-fullscreen-target .vjs-control-bar {
+        z-index: 2147483647 !important;
+      }
+      #qa-fullscreen-exit-btn {
+        position: fixed !important;
+        top: 12px !important;
+        right: 12px !important;
+        z-index: 2147483647 !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 9999px !important;
+        padding: 6px 14px !important;
+        font-family: system-ui, -apple-system, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.3px !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        transition: opacity 0.3s ease, transform 0.2s ease !important;
+        opacity: 1 !important;
+        user-select: none !important;
+      }
+      #qa-fullscreen-exit-btn:hover {
+        background: rgba(220, 38, 38, 0.9) !important;
+        border-color: rgba(239, 68, 68, 0.7) !important;
+        transform: scale(1.04) !important;
+      }
+      #qa-fullscreen-exit-btn.qa-btn-faded {
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
       /* Touch screen emulation: disable blue text selection when swiping/dragging */
       html.qa-touch-active,
       html.qa-touch-active * {
@@ -292,6 +375,231 @@ export function processProxiedHtml({ html, cleanUrl, effectiveOrigin, colorSchem
         window.__qaCurrentUrl = "${cleanUrl}";
         window.__qaScrollbarMode = "${scrollbar}";
         window.__qaColorScheme = "${colorScheme}";
+
+        // 0. CONTAINED FULLSCREEN EMULATION
+        // Restricts video and element fullscreen expansion to the simulated device screen (iframe viewport)
+        // instead of expanding across the entire PC monitor.
+        var currentFullscreenEl = null;
+        var ancestorStylesMap = [];
+        var exitBtnEl = null;
+        var hideBtnTimer = null;
+
+        function createFullscreenExitButton() {
+          if (document.getElementById('qa-fullscreen-exit-btn')) return;
+          var btn = document.createElement('button');
+          btn.id = 'qa-fullscreen-exit-btn';
+          btn.type = 'button';
+          btn.innerHTML = '✕ Salir (Esc)';
+          btn.title = 'Salir de pantalla completa en el emulador (o presiona Esc)';
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            exitContainedFullscreen();
+          });
+          document.body.appendChild(btn);
+          exitBtnEl = btn;
+
+          function resetBtnTimer() {
+            if (!exitBtnEl) return;
+            exitBtnEl.classList.remove('qa-btn-faded');
+            if (hideBtnTimer) clearTimeout(hideBtnTimer);
+            hideBtnTimer = setTimeout(function() {
+              if (exitBtnEl) exitBtnEl.classList.add('qa-btn-faded');
+            }, 2500);
+          }
+
+          window.addEventListener('mousemove', resetBtnTimer, { passive: true });
+          window.addEventListener('touchstart', resetBtnTimer, { passive: true });
+          resetBtnTimer();
+        }
+
+        function removeFullscreenExitButton() {
+          if (hideBtnTimer) {
+            clearTimeout(hideBtnTimer);
+            hideBtnTimer = null;
+          }
+          var btn = document.getElementById('qa-fullscreen-exit-btn');
+          if (btn && btn.parentNode) {
+            btn.parentNode.removeChild(btn);
+          }
+          exitBtnEl = null;
+        }
+
+        function requestContainedFullscreen() {
+          var targetEl = this || document.documentElement;
+          if (currentFullscreenEl === targetEl) {
+            return Promise.resolve();
+          }
+          if (currentFullscreenEl) {
+            exitContainedFullscreen();
+          }
+
+          currentFullscreenEl = targetEl;
+
+          // Save and neutralize styles on ancestors that create stacking context or clipping
+          ancestorStylesMap = [];
+          var curr = targetEl.parentElement;
+          while (curr && curr !== document.documentElement) {
+            var prevStyle = curr.getAttribute('style') || '';
+            ancestorStylesMap.push({ element: curr, originalStyle: prevStyle });
+            curr.style.transform = 'none';
+            curr.style.perspective = 'none';
+            curr.style.filter = 'none';
+            curr.style.contain = 'none';
+            curr.style.clipPath = 'none';
+            curr.style.zIndex = '2147483646';
+            curr = curr.parentElement;
+          }
+
+          // Apply contained fullscreen classes
+          targetEl.classList.add('qa-device-fullscreen-target');
+          targetEl.classList.add('fullscreen');
+          targetEl.classList.add('is-fullscreen');
+          targetEl.setAttribute('data-fullscreen', 'true');
+          document.documentElement.classList.add('qa-device-fullscreen-active');
+          if (document.body) document.body.classList.add('qa-device-fullscreen-active');
+
+          if (targetEl.classList.contains('plyr')) {
+            targetEl.classList.add('plyr--fullscreen-active');
+          }
+          if (targetEl.classList.contains('video-js')) {
+            targetEl.classList.add('vjs-fullscreen');
+          }
+
+          createFullscreenExitButton();
+
+          // Dispatch standard events for video players (Plyr, VideoJS, etc.)
+          try {
+            var evt1 = new Event('fullscreenchange', { bubbles: true, cancelable: false });
+            targetEl.dispatchEvent(evt1);
+            document.dispatchEvent(evt1);
+
+            var evt2 = new Event('webkitfullscreenchange', { bubbles: true, cancelable: false });
+            targetEl.dispatchEvent(evt2);
+            document.dispatchEvent(evt2);
+          } catch(err) {}
+
+          return Promise.resolve();
+        }
+
+        function exitContainedFullscreen() {
+          if (!currentFullscreenEl) {
+            return Promise.resolve();
+          }
+
+          var el = currentFullscreenEl;
+          currentFullscreenEl = null;
+
+          el.classList.remove('qa-device-fullscreen-target');
+          el.classList.remove('fullscreen');
+          el.classList.remove('is-fullscreen');
+          el.removeAttribute('data-fullscreen');
+          if (el.classList.contains('plyr')) {
+            el.classList.remove('plyr--fullscreen-active');
+          }
+          if (el.classList.contains('video-js')) {
+            el.classList.remove('vjs-fullscreen');
+          }
+
+          document.documentElement.classList.remove('qa-device-fullscreen-active');
+          if (document.body) document.body.classList.remove('qa-device-fullscreen-active');
+
+          // Restore ancestor styles
+          for (var i = 0; i < ancestorStylesMap.length; i++) {
+            var item = ancestorStylesMap[i];
+            if (item.originalStyle) {
+              item.element.setAttribute('style', item.originalStyle);
+            } else {
+              item.element.removeAttribute('style');
+            }
+          }
+          ancestorStylesMap = [];
+
+          removeFullscreenExitButton();
+
+          try {
+            var evt1 = new Event('fullscreenchange', { bubbles: true, cancelable: false });
+            el.dispatchEvent(evt1);
+            document.dispatchEvent(evt1);
+
+            var evt2 = new Event('webkitfullscreenchange', { bubbles: true, cancelable: false });
+            el.dispatchEvent(evt2);
+            document.dispatchEvent(evt2);
+          } catch(err) {}
+
+          return Promise.resolve();
+        }
+
+        // Global Esc key listener inside iframe
+        window.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && currentFullscreenEl) {
+            e.stopPropagation();
+            e.preventDefault();
+            exitContainedFullscreen();
+          }
+        }, true);
+
+        // Double-click on videos to toggle contained fullscreen
+        document.addEventListener('dblclick', function(e) {
+          var v = e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'video' ? e.target : null;
+          if (!v && e.target && e.target.closest) {
+            v = e.target.closest('video');
+          }
+          if (v) {
+            if (currentFullscreenEl) {
+              exitContainedFullscreen();
+            } else {
+              requestContainedFullscreen.call(v);
+            }
+          }
+        }, true);
+
+        // Override Fullscreen API on prototypes and document
+        try {
+          Element.prototype.requestFullscreen = requestContainedFullscreen;
+          Element.prototype.webkitRequestFullscreen = requestContainedFullscreen;
+          Element.prototype.webkitRequestFullScreen = requestContainedFullscreen;
+          Element.prototype.mozRequestFullScreen = requestContainedFullscreen;
+          Element.prototype.msRequestFullscreen = requestContainedFullscreen;
+
+          if (window.HTMLVideoElement) {
+            HTMLVideoElement.prototype.requestFullscreen = requestContainedFullscreen;
+            HTMLVideoElement.prototype.webkitRequestFullscreen = requestContainedFullscreen;
+            HTMLVideoElement.prototype.webkitRequestFullScreen = requestContainedFullscreen;
+            HTMLVideoElement.prototype.webkitEnterFullscreen = requestContainedFullscreen;
+            HTMLVideoElement.prototype.webkitEnterFullScreen = requestContainedFullscreen;
+            HTMLVideoElement.prototype.webkitExitFullscreen = exitContainedFullscreen;
+          }
+
+          Document.prototype.exitFullscreen = exitContainedFullscreen;
+          document.exitFullscreen = exitContainedFullscreen;
+          document.webkitExitFullscreen = exitContainedFullscreen;
+          document.webkitCancelFullScreen = exitContainedFullscreen;
+          document.mozCancelFullScreen = exitContainedFullscreen;
+          document.msExitFullscreen = exitContainedFullscreen;
+
+          var getFsEl = function() { return currentFullscreenEl; };
+          try {
+            Object.defineProperty(Document.prototype, 'fullscreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(document, 'fullscreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(Document.prototype, 'webkitFullscreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(document, 'webkitFullscreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(Document.prototype, 'mozFullScreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(document, 'mozFullScreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(Document.prototype, 'msFullscreenElement', { get: getFsEl, configurable: true });
+            Object.defineProperty(document, 'msFullscreenElement', { get: getFsEl, configurable: true });
+          } catch(e) {}
+
+          var getFsEnabled = function() { return true; };
+          try {
+            Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: getFsEnabled, configurable: true });
+            Object.defineProperty(document, 'fullscreenEnabled', { get: getFsEnabled, configurable: true });
+            Object.defineProperty(Document.prototype, 'webkitFullscreenEnabled', { get: getFsEnabled, configurable: true });
+            Object.defineProperty(document, 'webkitFullscreenEnabled', { get: getFsEnabled, configurable: true });
+            Object.defineProperty(Document.prototype, 'mozFullScreenEnabled', { get: getFsEnabled, configurable: true });
+            Object.defineProperty(document, 'mozFullScreenEnabled', { get: getFsEnabled, configurable: true });
+          } catch(e) {}
+        } catch(e) {}
 
         // 1. Dynamic style application helper
         function updateScrollbarStyles(mode) {
